@@ -77,7 +77,7 @@ No more manual Excel wrangling. No more forgotten subscriptions. Just smart insi
 
 ## 🤝 Credits
 
-Created by [Aniket Rochwani](https://www.linkedin.com/in/aniketrochwani)  
+Created by [Aniket Rochwani](https://www.linkedin.com/in/aniket-rochwani/)  
 Inspired by real pain. Built for real people.
 
 ---
