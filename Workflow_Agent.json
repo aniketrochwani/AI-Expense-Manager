@@ -1,0 +1,157 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [-40, 520],
+      "id": "3385d80c-3167-4029-b259-30f83199fbce",
+      "name": "When chat message received",
+      "webhookId": "<your-webhook-id>"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=You are an intelligent expense assistant.  \nHere is the user's query:  \n{{ $json.chatInput }}\n\n\nYour job is to:\n- Answer the query\n- Use expenses to find relevant matches\n- Show results in a neat bullet list with date, description, and amount\n- Give a total at the end if possible\n- If no matching results, say \"No expenses found in that category.\"\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [180, 520],
+      "id": "72d3859f-2db8-4cc6-898b-256faa379eba",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [60, 740],
+      "id": "41c666db-8bc8-451d-a33e-407fb4bf4f6a",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "<your-openai-credential-id>",
+          "name": "<your-openai-credential-name>"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [520, 740],
+      "id": "f41a972d-403a-446b-9ec8-1e5896563890",
+      "name": "Calculator"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [280, 740],
+      "id": "a053cc32-7182-4096-afc7-6d4d12ea5826",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1MDjuN_P7w75vlhFbAisL_zd1jR0cMB5uPGFPj6QXdKI",
+          "mode": "list",
+          "cachedResultName": "Categorized_Expenses",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MDjuN_P7w75vlhFbAisL_zd1jR0cMB5uPGFPj6QXdKI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MDjuN_P7w75vlhFbAisL_zd1jR0cMB5uPGFPj6QXdKI/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [740, 740],
+      "id": "8bb66bb2-2c43-4e1b-963a-0c3137759a18",
+      "name": "Google Sheets1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<your-google-sheets-credential-id>",
+          "name": "<your-google-sheets-credential-name>"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "<your-instance-id>"
+  }
+}
