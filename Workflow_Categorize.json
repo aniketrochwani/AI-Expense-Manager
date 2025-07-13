@@ -1,0 +1,198 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1i4e337V94zP1VBI6GWQDPWn9XTe0PdJI",
+          "mode": "list",
+          "cachedResultName": "PersonalFinance",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1i4e337V94zP1VBI6GWQDPWn9XTe0PdJI"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "id": "e58e4b6f-105f-4ec1-9a85-8a7d791866e7",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "<your-google-drive-credential-id>",
+          "name": "<your-google-drive-credential-name>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [180, 0],
+      "id": "7a1fd1cd-63b9-4e93-b4c7-386ee8ac1da5",
+      "name": "Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "<your-google-drive-credential-id>",
+          "name": "<your-google-drive-credential-name>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "xls",
+        "options": {
+          "range": "20"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [380, 0],
+      "id": "ac188c2f-688c-496e-ae4e-b1db55cab952",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a smart personal finance assistant.\n\nBelow is a list of monthly expenses, formatted as:\nDate | Description | Amount\n\nYour task:\n\n1. For each transaction, assign a category from the following:\n   - Food & Dining\n   - Shopping\n   - Entertainment\n   - Utilities\n   - Transport\n   - Peer Transfer\n   - Health & Medical\n   - Travel\n   - Education\n   - Unknown\n\n2. Return only the result in this JSON format:\n{\n  \"categorizedExpenses\": [\n    { \"date\": \"DD/MM/YY\", \"description\": \"string\", \"amount\": number, \"category\": \"string\" },\n    ...\n  ]\n}\n\nRules:\n- Ensure JSON is valid — no extra text or commentary outside the JSON.\n- Amount must be a number (no currency symbols or commas).\n- If the category is unclear, use \"Unknown\".\n- Do not calculate or include category totals. Just classify each item.\n\nExpenses:\n{{ $json.expensesText }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [940, 0],
+      "id": "d86ddd42-779e-4461-bbc7-4217f5877bc2",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "<your-openai-credential-id>",
+          "name": "<your-openai-credential-name>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items\n  .filter(item => {\n    const date = item.json[\"Date\"];\n    const withdrawal = item.json[\"Withdrawal Amt.\"];\n\n    const isValidDate = /^\\d{2}\\/\\d{2}\\/\\d{2,4}$/.test(date);\n    const hasWithdrawal = withdrawal && withdrawal !== \"\" && withdrawal !== null;\n\n    return isValidDate && hasWithdrawal;\n  })\n  .map(item => {\n    const raw = item.json[\"Withdrawal Amt.\"];\n    const amt = typeof raw === \"string\" ? parseFloat(raw.replace(/,/g, \"\")) : Number(raw);\n\n    return {\n      json: {\n        date: item.json[\"Date\"],\n        description: item.json[\"Narration\"],\n        amount: amt\n      }\n    };\n  });"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 0],
+      "id": "1b839c74-e2e3-4797-911e-6aad950d638a",
+      "name": "Function Node → Filter + Format"
+    },
+    {
+      "parameters": {
+        "jsCode": "const lines = items\n  .filter(item => {\n    const amt = item.json.amount;\n    return amt !== null && amt !== undefined && !isNaN(amt);\n  })\n  .map(item => {\n    return `${item.json.date} | ${item.json.description} | ${item.json.amount}`;\n  });\n\nreturn [\n  {\n    json: {\n      expensesText: lines.join(\"\\n\")\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 0],
+      "id": "09eca101-ce8b-4202-9af2-1a115296e078",
+      "name": "Function Node → Format into expensesText for GPT"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.first().json.message.content.categorizedExpenses.map(exp => ({\n  json: exp\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1260, 0],
+      "id": "49e54526-03fc-4180-8387-3d719512ee15",
+      "name": "Convert output to Json"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1MDjuN_P7w75vlhFbAisL_zd1jR0cMB5uPGFPj6QXdKI",
+          "mode": "list",
+          "cachedResultName": "Categorized_Expenses",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MDjuN_P7w75vlhFbAisL_zd1jR0cMB5uPGFPj6QXdKI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MDjuN_P7w75vlhFbAisL_zd1jR0cMB5uPGFPj6QXdKI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $json.date }}",
+            "description": "={{ $json.description }}",
+            "amount": "={{ $json.amount }}",
+            "category": "={{ $json.category }}"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1420, 0],
+      "id": "1d542912-5c11-439a-8265-ac486611a22f",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<your-google-sheets-credential-id>",
+          "name": "<your-google-sheets-credential-name>"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [[{ "node": "Google Drive", "type": "main", "index": 0 }]]
+    },
+    "Google Drive": {
+      "main": [[{ "node": "Extract from File", "type": "main", "index": 0 }]]
+    },
+    "Extract from File": {
+      "main": [[{ "node": "Function Node → Filter + Format", "type": "main", "index": 0 }]]
+    },
+    "Function Node → Filter + Format": {
+      "main": [[{ "node": "Function Node → Format into expensesText for GPT", "type": "main", "index": 0 }]]
+    },
+    "Function Node → Format into expensesText for GPT": {
+      "main": [[{ "node": "OpenAI", "type": "main", "index": 0 }]]
+    },
+    "OpenAI": {
+      "main": [[{ "node": "Convert output to Json", "type": "main", "index": 0 }]]
+    },
+    "Convert output to Json": {
+      "main": [[{ "node": "Google Sheets", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "<your-instance-id>"
+  }
+}
